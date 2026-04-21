@@ -6,10 +6,10 @@
 
 void UImportManager::InitializeImportManager()
 {
-	// Get File Library Manager reference
-	FileLibraryManager = GetGameInstance()->GetSubsystem<UFileLibraryManager>();
-	// Load Register
-	LoadRegister();
+    // Get File Library Manager reference
+    FileLibraryManager = GetGameInstance()->GetSubsystem<UFileLibraryManager>();
+    // Load Register
+    LoadRegister();
 
 }
 
@@ -21,39 +21,39 @@ void UImportManager::InitializeImportManager()
 
 FString UImportManager::GetSaveMetaJson(const FFileInfo& FileInfo, TArray<uint8>& Data)
 {
-	FImgFileMeta ImgMetaToSave;
-	ImgMetaToSave.ImageName = FileInfo.FileName;
-	ImgMetaToSave.RawFileData = Data;
-	AddCodeToImgMeta(ImgMetaToSave);
-	FString JsonString = ImgMetaToJson(ImgMetaToSave);
+    FImgFileMeta ImgMetaToSave;
+    ImgMetaToSave.ImageName = FileInfo.FileName;
+    ImgMetaToSave.RawFileData = Data;
+    AddCodeToImgMeta(ImgMetaToSave);
+    FString JsonString = ImgMetaToJson(ImgMetaToSave);
     return JsonString;
 }
 
-FImgFileMeta UImportManager::MakeSaveMeta(const FFileInfo& FileInfo,const TArray<uint8>& Data)
+FImgFileMeta UImportManager::MakeSaveMeta(const FFileInfo& FileInfo, const TArray<uint8>& Data)
 {
     FImgFileMeta ImgMetaToSave;
     ImgMetaToSave.ImageName = FileInfo.FileName;
     ImgMetaToSave.RawFileData = Data;
     AddCodeToImgMeta(ImgMetaToSave);
-    return ImgMetaToSave; 
+    return ImgMetaToSave;
 }
 
 FString UImportManager::GetJsonFromMeta(const FImgFileMeta& Meta)
-{    
+{
     return ImgMetaToJson(Meta);
 }
 
 void UImportManager::AddCodeToImgMeta(FImgFileMeta& ImgMetaRef)
 {
     // Create Code
-	FString FileHash = FMD5::HashBytes(ImgMetaRef.RawFileData.GetData(), ImgMetaRef.RawFileData.Num());
-	FString Timestamp = FDateTime::Now().ToString(TEXT("%Y%m%d%H%M%S%s"));
-	ImgMetaRef.Code = FMD5::HashAnsiString(*(FileHash + Timestamp));
+    FString FileHash = FMD5::HashBytes(ImgMetaRef.RawFileData.GetData(), ImgMetaRef.RawFileData.Num());
+    FString Timestamp = FDateTime::Now().ToString(TEXT("%Y%m%d%H%M%S%s"));
+    ImgMetaRef.Code = FMD5::HashAnsiString(*(FileHash + Timestamp));
 }
 
 FString UImportManager::ImgMetaToJson(const FImgFileMeta& ImgMetaIn)
 {
-	
+
     // 1. Create a new JSON Object
     TSharedPtr<FJsonObject> JsonObj = MakeShared<FJsonObject>();
 
@@ -112,7 +112,7 @@ FImgFileMeta UImportManager::JsonToImgMeta(const FString& JsonStringIn, bool Unp
             OutMeta.LoadedTexture = LoadTextureFromRawData(OutMeta.RawFileData);
             OutMeta.RawFileData.Empty(); // Clear the raw data from memory since we now have the texture loaded
         }
-        
+
     }
     else
     {
@@ -155,7 +155,7 @@ bool UImportManager::LoadRegister()
                         ImportAssetRegister.Add(Entry);
                     }
                 }
-                return true; 
+                return true;
             }
         }
         UE_LOG(LogTemp, Warning, TEXT("LoadRegister: Failed to parse Register.json or it's empty."));
@@ -183,10 +183,10 @@ void UImportManager::ResetRegister()
             NewEntry.Code = Meta.Code;
             NewEntry.Name = Meta.ImageName;
 
-            ImportAssetRegister.Add(NewEntry); 
+            ImportAssetRegister.Add(NewEntry);
         }
 
-        SaveRegisterToFile(); 
+        SaveRegisterToFile();
     }
 }
 
@@ -213,7 +213,7 @@ void UImportManager::RemoveRegisterEntry(const FString& Code)
     // RemoveAll is a fast, built-in Unreal function that removes any element matching the lambda condition
     int32 RemovedCount = ImportAssetRegister.RemoveAll([&](const FImportAssetRegData& Entry) {
         return Entry.Code == Code;
-    });
+        });
 
     // Only save to disk if we actually found and removed something
     if (RemovedCount > 0)
@@ -230,11 +230,11 @@ FString UImportManager::GetCodeFromName(const FString& Name)
         {
             return Entry.Code;
         }
-	}
+    }
     return FString();
 }
 
-FImgFileMeta UImportManager::GetMetaFromCode(const FString& Code, bool LoadTexture) 
+FImgFileMeta UImportManager::GetMetaFromCode(const FString& Code, bool LoadTexture)
 {
     FString JsonString = FileLibraryManager->GetImgJsonByFileName(Code);
     return JsonToImgMeta(JsonString, LoadTexture);
