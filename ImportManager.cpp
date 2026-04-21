@@ -60,11 +60,9 @@ FString UImportManager::ImgMetaToJson(const FImgFileMeta& ImgMetaIn)
     // 1. Create a new JSON Object
     TSharedPtr<FJsonObject> JsonObj = MakeShared<FJsonObject>();
 
-    // 2. Use your JsonUtil helpers to set the standard string fields
+    // 2. Set the standard string fields
     JsonUtil::SetString(JsonObj, TEXT("ImageName"), ImgMetaIn.ImageName);
     JsonUtil::SetString(JsonObj, TEXT("Code"), ImgMetaIn.Code);
-
-    // Note: We are explicitly skipping the UTexture2D* LoadedTexture per your instructions.
 
     // 3. Handle the Raw Binary Data
     // We must encode the uint8 array into a Base64 string so it survives JSON serialization.
@@ -75,7 +73,6 @@ FString UImportManager::ImgMetaToJson(const FImgFileMeta& ImgMetaIn)
     }
     else
     {
-        // If it's empty, we can just write an empty string
         JsonUtil::SetString(JsonObj, TEXT("RawFileData"), TEXT(""));
     }
 
@@ -96,13 +93,12 @@ FImgFileMeta UImportManager::JsonToImgMeta(const FString& JsonStringIn, bool Unp
     TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(TrimmedString);
 
     // 1. Create a JSON Reader
-    //TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonStringIn);
     TSharedPtr<FJsonObject> JsonObj;
 
     // 2. Deserialize the text string into a structured JSON Object
     if (FJsonSerializer::Deserialize(Reader, JsonObj) && JsonObj.IsValid())
     {
-        // 3. Extract the standard properties using your JsonUtil helpers
+        // 3. Extract the standard properties 
         JsonUtil::TryGetString(JsonObj, TEXT("ImageName"), OutMeta.ImageName);
         JsonUtil::TryGetString(JsonObj, TEXT("Code"), OutMeta.Code);
 
@@ -112,7 +108,7 @@ FImgFileMeta UImportManager::JsonToImgMeta(const FString& JsonStringIn, bool Unp
             FString Base64Data;
             if (JsonUtil::TryGetString(JsonObj, TEXT("RawFileData"), Base64Data) && !Base64Data.IsEmpty())
             {
-                // This safely translates the text string back into the TArray<uint8>
+                // Translate the text string back into the TArray<uint8>
                 FBase64::Decode(Base64Data, OutMeta.RawFileData);
             }
 
@@ -123,7 +119,7 @@ FImgFileMeta UImportManager::JsonToImgMeta(const FString& JsonStringIn, bool Unp
     }
     else
     {
-        // This will tell you the exact line and character where the parser gave up
+        // We want to log in case it breaks
         UE_LOG(LogTemp, Error, TEXT("JSON Parse Error: %s"), *Reader->GetErrorMessage());
     }
 
@@ -142,7 +138,7 @@ bool UImportManager::LoadRegister()
     if (FileLibraryManager->ReadJsonFromFile(TEXT("Register.json"), E_SubFolder::Settings, json))
     {
         TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(json);
-        TSharedPtr<FJsonObject> RootObj; // Changed to Object to match your save format
+        TSharedPtr<FJsonObject> RootObj; // Changed to Object to match save format
 
         if (FJsonSerializer::Deserialize(Reader, RootObj) && RootObj.IsValid())
         {
@@ -162,7 +158,7 @@ bool UImportManager::LoadRegister()
                         ImportAssetRegister.Add(Entry);
                     }
                 }
-                return true; // FIXED: Added missing return statement
+                return true; 
             }
         }
         UE_LOG(LogTemp, Warning, TEXT("LoadRegister: Failed to parse Register.json or it's empty."));
@@ -190,10 +186,10 @@ void UImportManager::ResetRegister()
             NewEntry.Code = Meta.Code;
             NewEntry.Name = Meta.ImageName;
 
-            ImportAssetRegister.Add(NewEntry); // FIXED: Actually add it to the array
+            ImportAssetRegister.Add(NewEntry); 
         }
 
-        SaveRegisterToFile(); // Use the new DRY helper
+        SaveRegisterToFile(); 
     }
 }
 
@@ -291,10 +287,10 @@ UTexture2D* UImportManager::LoadTextureFromRawData(TArray<uint8>& RawData)
             UTexture2D* NewTexture = UTexture2D::CreateTransient(ImageWrapper->GetWidth(), ImageWrapper->GetHeight(), PF_B8G8R8A8);
             if (!NewTexture) return nullptr;
 
-            // 7. Lock the texture's memory so we can write to it safely
+            // 7. Lock the texture's memory
             void* TextureData = NewTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
 
-            // 8. Copy our uncompressed pixel data directly into the texture's memory
+            // 8. Copy uncompressed pixel data directly into the texture's memory
             FMemory::Memcpy(TextureData, UncompressedBGRA.GetData(), UncompressedBGRA.Num());
 
             // 9. Unlock and send to the GPU
