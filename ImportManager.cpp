@@ -54,14 +54,13 @@ void UImportManager::AddCodeToImgMeta(FImgFileMeta& ImgMetaRef)
 FString UImportManager::ImgMetaToJson(const FImgFileMeta& ImgMetaIn)
 {
 
-    // 1. Create a new JSON Object
+    // Create a new JSON Object
     TSharedPtr<FJsonObject> JsonObj = MakeShared<FJsonObject>();
 
-    // 2. Set the standard string fields
+    // Set the standard string fields
     JsonUtil::SetString(JsonObj, TEXT("ImageName"), ImgMetaIn.ImageName);
     JsonUtil::SetString(JsonObj, TEXT("Code"), ImgMetaIn.Code);
 
-    // 3. Handle the Raw Binary Data
     // We must encode the uint8 array into a Base64 string so it survives JSON serialization.
     if (ImgMetaIn.RawFileData.Num() > 0)
     {
@@ -73,7 +72,7 @@ FString UImportManager::ImgMetaToJson(const FImgFileMeta& ImgMetaIn)
         JsonUtil::SetString(JsonObj, TEXT("RawFileData"), TEXT(""));
     }
 
-    // 4. Serialize the JSON Object down into a final FString
+    // Serialize the JSON Object down into a final FString
     FString OutputString;
     TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
     FJsonSerializer::Serialize(JsonObj.ToSharedRef(), Writer);
@@ -89,19 +88,19 @@ FImgFileMeta UImportManager::JsonToImgMeta(const FString& JsonStringIn, bool Unp
     FString TrimmedString = JsonStringIn.TrimStartAndEnd();
     TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(TrimmedString);
 
-    // 1. Create a JSON Reader
+    // Create a JSON Reader
     TSharedPtr<FJsonObject> JsonObj;
 
-    // 2. Deserialize the text string into a structured JSON Object
+    // Deserialize the text string into a structured JSON Object
     if (FJsonSerializer::Deserialize(Reader, JsonObj) && JsonObj.IsValid())
     {
-        // 3. Extract the standard properties 
+        // Extract the standard properties 
         JsonUtil::TryGetString(JsonObj, TEXT("ImageName"), OutMeta.ImageName);
         JsonUtil::TryGetString(JsonObj, TEXT("Code"), OutMeta.Code);
 
         if (UnpackFile)
         {
-            // 4. Extract and Decode the Base64 image data
+            // Extract and Decode the Base64 image data
             FString Base64Data;
             if (JsonUtil::TryGetString(JsonObj, TEXT("RawFileData"), Base64Data) && !Base64Data.IsEmpty())
             {
@@ -131,7 +130,9 @@ FImgFileMeta UImportManager::JsonToImgMeta(const FString& JsonStringIn, bool Unp
 
 bool UImportManager::LoadRegister()
 {
+    
     FString json;
+    // Read the register file
     if (FileLibraryManager->ReadJsonFromFile(TEXT("Register.json"), E_SubFolder::Settings, json))
     {
         TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(json);
@@ -144,6 +145,7 @@ bool UImportManager::LoadRegister()
             {
                 ImportAssetRegister.Empty(); // Clear before loading
 
+                // Read the array of objects
                 for (const TSharedPtr<FJsonValue>& Value : *JsonArray)
                 {
                     TSharedPtr<FJsonObject> Obj = Value->AsObject();
@@ -174,10 +176,12 @@ void UImportManager::ResetRegister()
     TArray<FFileInfo> ImportedAssets = FileLibraryManager->GetAllImageInfoInImageSubFolder();
     if (ImportedAssets.Num() > 0)
     {
-        ImportAssetRegister.Empty();
+        ImportAssetRegister.Empty(); // Clear Register
 
+        // For each existing imported asset 
         for (const FFileInfo& inf : ImportedAssets)
         {
+            // Create the meta and set up
             FImgFileMeta Meta = JsonToImgMeta(FileLibraryManager->LoadImgMetaJson(inf));
             FImportAssetRegData NewEntry;
             NewEntry.Code = Meta.Code;
@@ -186,25 +190,26 @@ void UImportManager::ResetRegister()
             ImportAssetRegister.Add(NewEntry);
         }
 
+        // Store to file
         SaveRegisterToFile();
     }
 }
 
 void UImportManager::AddRegisterEntry(const FString& Code, const FString& Name)
 {
-    // 1. Safety check to prevent duplicates
+    // Safety check to prevent duplicates
     for (const FImportAssetRegData& Entry : ImportAssetRegister)
     {
         if (Entry.Code == Code) return;
     }
 
-    // 2. Add the new entry
+    // Add the new entry
     FImportAssetRegData NewEntry;
     NewEntry.Code = Code;
     NewEntry.Name = Name;
     ImportAssetRegister.Add(NewEntry);
 
-    // 3. Save to disk
+    // Save to disk
     SaveRegisterToFile();
 }
 
@@ -222,6 +227,9 @@ void UImportManager::RemoveRegisterEntry(const FString& Code)
     }
 }
 
+
+
+// Just a helper to get the imported asset code from name
 FString UImportManager::GetCodeFromName(const FString& Name)
 {
     for (const FImportAssetRegData& Entry : ImportAssetRegister)
@@ -234,6 +242,7 @@ FString UImportManager::GetCodeFromName(const FString& Name)
     return FString();
 }
 
+// helper to deliver meta from code
 FImgFileMeta UImportManager::GetMetaFromCode(const FString& Code, bool LoadTexture)
 {
     FString JsonString = FileLibraryManager->GetImgJsonByFileName(Code);
@@ -248,16 +257,16 @@ FImgFileMeta UImportManager::GetMetaFromCode(const FString& Code, bool LoadTextu
 
 UTexture2D* UImportManager::LoadTextureFromRawData(TArray<uint8>& RawData)
 {
-    // 1. Safety check
+    // Safety check
     if (RawData.Num() == 0)
     {
         return nullptr;
     }
 
-    // 2. Load the Image Wrapper Module
+    // Load the Image Wrapper Module
     IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
 
-    // 3. Auto-detect the image format (PNG, JPG, BMP, etc.) from the raw bytes
+    // Auto-detect the image format (PNG, JPG, BMP, etc.) from the raw bytes
     EImageFormat ImageFormat = ImageWrapperModule.DetectImageFormat(RawData.GetData(), RawData.Num());
     if (ImageFormat == EImageFormat::Invalid)
     {
@@ -265,14 +274,14 @@ UTexture2D* UImportManager::LoadTextureFromRawData(TArray<uint8>& RawData)
         return nullptr;
     }
 
-    // 4. Create the wrapper for that specific format
+    // Create the wrapper for that specific format
     TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(ImageFormat);
     if (!ImageWrapper.IsValid())
     {
         return nullptr;
     }
 
-    // 5. Decompress the image
+    // Decompress the image
     if (ImageWrapper->SetCompressed(RawData.GetData(), RawData.Num()))
     {
         TArray<uint8> UncompressedBGRA;
@@ -280,17 +289,17 @@ UTexture2D* UImportManager::LoadTextureFromRawData(TArray<uint8>& RawData)
         // Extract the raw pixels into a format Unreal expects (Blue, Green, Red, Alpha - 8 bit)
         if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBGRA))
         {
-            // 6. Create the empty Transient Texture in RAM
+            // Create the empty Transient Texture in RAM
             UTexture2D* NewTexture = UTexture2D::CreateTransient(ImageWrapper->GetWidth(), ImageWrapper->GetHeight(), PF_B8G8R8A8);
             if (!NewTexture) return nullptr;
 
-            // 7. Lock the texture's memory
+            // Lock the texture's memory
             void* TextureData = NewTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
 
-            // 8. Copy uncompressed pixel data directly into the texture's memory
+            // Copy uncompressed pixel data directly into the texture's memory
             FMemory::Memcpy(TextureData, UncompressedBGRA.GetData(), UncompressedBGRA.Num());
 
-            // 9. Unlock and send to the GPU
+            // Unlock and send to the GPU
             NewTexture->GetPlatformData()->Mips[0].BulkData.Unlock();
             NewTexture->UpdateResource();
 
